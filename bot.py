@@ -90,33 +90,24 @@ def handle_text(message):
                    types.InlineKeyboardButton("📊 CHECK STOCK", callback_data='admin_stock'))
         bot.send_message(message.chat.id, "⚙️ ADMIN PANEL:", reply_markup=markup)
 
-# --- Steps Logic ---
+# --- Logic Steps ---
 def ask_payment_info(message, cat, price):
     if message.text in ['⬅️ BACK', '🏠 MAIN MENU']: return handle_text(message)
     try:
         qty = int(message.text)
-        bot.send_message(message.chat.id, f"ORDER: {qty} x {cat}. TOTAL: {qty * price} TK.\nBKASH: 01762921053\nPLEASE SEND TRXID AND NUMBER.")
-        bot.register_next_step_handler(message, finalize_order, cat, qty)
+        total = qty * price
+        bot.send_message(message.chat.id, f"ORDER: {qty} x {cat}. TOTAL: {total} TK.\nBKASH: 01762921053\nPLEASE SEND TRXID AND NUMBER.")
+        bot.register_next_step_handler(message, finalize_order, cat, qty, total)
     except: bot.send_message(message.chat.id, "PLEASE ENTER A NUMBER ONLY!")
 
-def finalize_order(message, cat, qty):
-    bot.send_message(ADMIN_ID, f"🔔 PAYMENT REQUEST!\nUSER: {message.chat.id}\nITEM: {qty} x {cat}\nDETAILS: {message.text}")
+def finalize_order(message, cat, qty, total):
+    # ADMIN APPROVAL BUTTON
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("✅ APPROVE", callback_data=f"approve_{message.chat.id}_{qty}_{cat}_{total}"))
+    
+    admin_msg = (f"🔔 PAYMENT REQUEST!\nUSER: {message.chat.id}\nITEM: {qty} x {cat}\nTOTAL: {total} TK\nDETAILS: {message.text}")
+    bot.send_message(ADMIN_ID, admin_msg, reply_markup=markup)
     bot.send_message(message.chat.id, "✅ REQUEST SENT TO ADMIN.")
-
-def ask_gmail_credentials(message, cat):
-    if message.text in ['⬅️ BACK', '🏠 MAIN MENU']: return handle_text(message)
-    qty = message.text
-    bot.send_message(message.chat.id, "PLEASE SEND GMAIL AND PASSWORD:")
-    bot.register_next_step_handler(message, ask_payment_method, cat, qty)
-
-def ask_payment_method(message, cat, qty):
-    creds = message.text
-    bot.send_message(message.chat.id, "PLEASE SEND YOUR PAYMENT NUMBER (BKASH/NAGAD):")
-    bot.register_next_step_handler(message, finish_sell_order, cat, qty, creds)
-
-def finish_sell_order(message, cat, qty, creds):
-    bot.send_message(ADMIN_ID, f"💰 SELL REQUEST!\nITEM: {qty} x {cat}\nINFO: {creds}\nPAYMENT: {message.text}")
-    bot.send_message(message.chat.id, "✅ REQUEST SENT SUCCESSFULLY.")
 
 # --- Callback Handler ---
 @bot.callback_query_handler(func=lambda call: True)
@@ -126,6 +117,21 @@ def callback_handler(call):
             bot.delete_message(call.message.chat.id, call.message.message_id)
             send_main_menu(call.message.chat.id)
         else: bot.answer_callback_query(call.id, "❌ YOU HAVE NOT JOINED THE CHANNEL!", show_alert=True)
+    
+    elif call.data.startswith('approve_'):
+        data = call.data.split('_')
+        user_id, qty, cat, total = data[1], data[2], data[3], data[4]
+        
+        # Admin feedback
+        bot.edit_message_text(f"✅ APPROVED: {qty} x {cat} for {user_id}", ADMIN_ID, call.message.message_id)
+        
+        # User feedback
+        bot.send_message(user_id, "🎉 YOUR ORDER HAS BEEN APPROVED!")
+        
+        # Channel Notification
+        channel_msg = (f"🎉 NEW ORDER COMPLETED!\n📦 {qty} x {cat}\n💰 AMOUNT: {total} TK\n✅ STATUS: PAYMENT RECEIVED!")
+        bot.send_message(CHANNEL_ID, channel_msg)
+
     elif call.data == 'admin_add':
         bot.send_message(call.message.chat.id, "FORMAT: Email Pass Category Price")
         bot.register_next_step_handler(call.message, save_email)
@@ -135,6 +141,7 @@ def callback_handler(call):
         msg = "📊 CURRENT STOCK:\n" + "\n".join([f"{r[0]}: {r[1]} PIECES" for r in data])
         bot.send_message(call.message.chat.id, msg or "STOCK IS EMPTY!")
 
+# Remaining logic (save_email, etc.) remains unchanged...
 def save_email(message):
     try:
         email, password, cat, price = message.text.split()
