@@ -28,20 +28,20 @@ def is_subscribed(user_id):
 
 def send_main_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.row('🛒 Buy Gmail', '💰 Sell Gmail')
-    markup.row('📢 Channel', '📞 Contact')
+    markup.row('🛒 BUY GMAIL', '💰 SELL GMAIL')
+    markup.row('📢 CHANNEL', '📞 CONTACT')
     if chat_id == ADMIN_ID:
-        markup.row('⚙️ Admin Panel')
-    bot.send_message(chat_id, "👋 স্বাগতম! আপনার অপশনটি বেছে নিন:", reply_markup=markup)
+        markup.row('⚙️ ADMIN PANEL')
+    bot.send_message(chat_id, "👋 WELCOME! PLEASE CHOOSE AN OPTION:", reply_markup=markup)
 
 # --- Start Handler ---
 @bot.message_handler(commands=['start'])
 def start(message):
     if not is_subscribed(message.chat.id):
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("📢 Join Main Channel", url=CHANNEL_URL))
-        markup.add(types.InlineKeyboardButton("🔑 Verify", callback_data='verify_sub'))
-        bot.send_message(message.chat.id, "⚠️ বট ব্যবহারের জন্য চ্যানেলে জয়েন করুন!", reply_markup=markup)
+        markup.add(types.InlineKeyboardButton("📢 JOIN MAIN CHANNEL", url=CHANNEL_URL))
+        markup.add(types.InlineKeyboardButton("🔑 VERIFY", callback_data='verify_sub'))
+        bot.send_message(message.chat.id, "⚠️ PLEASE JOIN THE CHANNEL TO USE THE BOT!", reply_markup=markup)
         return
     send_main_menu(message.chat.id)
 
@@ -49,74 +49,74 @@ def start(message):
 @bot.message_handler(func=lambda message: True)
 def handle_text(message):
     if not is_subscribed(message.chat.id):
-        bot.send_message(message.chat.id, "⚠️ আগে চ্যানেলে জয়েন করুন!")
+        bot.send_message(message.chat.id, "⚠️ PLEASE JOIN THE CHANNEL AND TYPE /start!")
         return
 
     # BUY FLOW
-    if message.text == '🛒 Buy Gmail':
+    if message.text == '🛒 BUY GMAIL':
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.row('Old Gmail (35 TK)', 'New Gmail (32 TK)')
-        markup.row('⬅️ Back', '🏠 Main Menu')
-        bot.send_message(message.chat.id, "📦 ক্যাটাগরি সিলেক্ট করুন:", reply_markup=markup)
+        markup.row('  OLD GMAIL (35 TK)  ', '  NEW GMAIL (32 TK)  ')
+        markup.row('⬅️ BACK', '🏠 MAIN MENU')
+        bot.send_message(message.chat.id, "📦 PLEASE SELECT CATEGORY:", reply_markup=markup)
     
-    elif message.text in ['Old Gmail (35 TK)', 'New Gmail (32 TK)']:
+    elif message.text in ['  OLD GMAIL (35 TK)  ', '  NEW GMAIL (32 TK)  ']:
         cat = 'Old' if '35' in message.text else 'New'
         price = 35 if cat == 'Old' else 32
-        bot.send_message(message.chat.id, f"আপনি {cat} বেছে নিয়েছেন। কয়টি নিতে চান?")
+        bot.send_message(message.chat.id, f"YOU SELECTED {cat}. HOW MANY DO YOU WANT?")
         bot.register_next_step_handler(message, ask_payment_info, cat, price)
 
     # SELL FLOW
-    elif message.text == '💰 Sell Gmail':
+    elif message.text == '💰 SELL GMAIL':
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.row('Sell Old Gmail', 'Sell New Gmail')
-        markup.row('⬅️ Back', '🏠 Main Menu')
-        bot.send_message(message.chat.id, "💰 সেল করতে ক্যাটাগরি সিলেক্ট করুন:", reply_markup=markup)
+        markup.row('💰 SELL OLD GMAIL', '💰 SELL NEW GMAIL')
+        markup.row('⬅️ BACK', '🏠 MAIN MENU')
+        bot.send_message(message.chat.id, "💰 SELECT CATEGORY TO SELL:", reply_markup=markup)
 
-    elif message.text in ['Sell Old Gmail', 'Sell New Gmail']:
-        cat = 'Old' if 'Old' in message.text else 'New'
-        bot.send_message(message.chat.id, f"কত পিস {cat} জিমেইল সেল করতে চান?")
+    elif message.text in ['💰 SELL OLD GMAIL', '💰 SELL NEW GMAIL']:
+        cat = 'Old' if 'OLD' in message.text else 'New'
+        bot.send_message(message.chat.id, f"HOW MANY PIECES OF {cat} GMAIL DO YOU WANT TO SELL?")
         bot.register_next_step_handler(message, ask_gmail_credentials, cat)
 
     # NAVIGATIONS
-    elif message.text == '🏠 Main Menu': send_main_menu(message.chat.id)
-    elif message.text == '⬅️ Back': send_main_menu(message.chat.id)
-    elif message.text == '📢 Channel': bot.send_message(message.chat.id, f"📢 চ্যানেল: {CHANNEL_URL}")
-    elif message.text == '📞 Contact': bot.send_message(message.chat.id, "📞 যোগাযোগ: @AK_A_SH_002")
+    elif message.text == '🏠 MAIN MENU': send_main_menu(message.chat.id)
+    elif message.text == '⬅️ BACK': send_main_menu(message.chat.id)
+    elif message.text == '📢 CHANNEL': bot.send_message(message.chat.id, f"📢 CHANNEL: {CHANNEL_URL}")
+    elif message.text == '📞 CONTACT': bot.send_message(message.chat.id, "📞 CONTACT: @AK_A_SH_002")
     
     # ADMIN
-    elif message.text == '⚙️ Admin Panel' and message.chat.id == ADMIN_ID:
+    elif message.text == '⚙️ ADMIN PANEL' and message.chat.id == ADMIN_ID:
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("➕ Add Gmail", callback_data='admin_add'),
-                   types.InlineKeyboardButton("📊 Check Stock", callback_data='admin_stock'))
-        bot.send_message(message.chat.id, "⚙️ অ্যাডমিন প্যানেল:", reply_markup=markup)
+        markup.add(types.InlineKeyboardButton("➕ ADD GMAIL", callback_data='admin_add'),
+                   types.InlineKeyboardButton("📊 CHECK STOCK", callback_data='admin_stock'))
+        bot.send_message(message.chat.id, "⚙️ ADMIN PANEL:", reply_markup=markup)
 
 # --- Steps Logic ---
 def ask_payment_info(message, cat, price):
-    if message.text in ['⬅️ Back', '🏠 Main Menu']: return handle_text(message)
+    if message.text in ['⬅️ BACK', '🏠 MAIN MENU']: return handle_text(message)
     try:
         qty = int(message.text)
-        bot.send_message(message.chat.id, f"অর্ডার: {qty} টি {cat}। মোট: {qty * price} টাকা।\nবিকাশ: 01762921053\nTrxID ও নাম্বার দিন।")
+        bot.send_message(message.chat.id, f"ORDER: {qty} x {cat}. TOTAL: {qty * price} TK.\nBKASH: 01762921053\nPLEASE SEND TRXID AND NUMBER.")
         bot.register_next_step_handler(message, finalize_order, cat, qty)
-    except: bot.send_message(message.chat.id, "শুধু সংখ্যা লিখুন!")
+    except: bot.send_message(message.chat.id, "PLEASE ENTER A NUMBER ONLY!")
 
 def finalize_order(message, cat, qty):
-    bot.send_message(ADMIN_ID, f"🔔 পেমেন্ট রিকোয়েস্ট!\nইউজার: {message.chat.id}\nপণ্য: {qty} টি {cat}\nডিটেইলস: {message.text}")
-    bot.send_message(message.chat.id, "✅ অ্যাডমিনের কাছে পাঠানো হয়েছে।")
+    bot.send_message(ADMIN_ID, f"🔔 PAYMENT REQUEST!\nUSER: {message.chat.id}\nITEM: {qty} x {cat}\nDETAILS: {message.text}")
+    bot.send_message(message.chat.id, "✅ REQUEST SENT TO ADMIN.")
 
 def ask_gmail_credentials(message, cat):
-    if message.text in ['⬅️ Back', '🏠 Main Menu']: return handle_text(message)
+    if message.text in ['⬅️ BACK', '🏠 MAIN MENU']: return handle_text(message)
     qty = message.text
-    bot.send_message(message.chat.id, "জিমেইল এবং পাসওয়ার্ড দিন:")
+    bot.send_message(message.chat.id, "PLEASE SEND GMAIL AND PASSWORD:")
     bot.register_next_step_handler(message, ask_payment_method, cat, qty)
 
 def ask_payment_method(message, cat, qty):
     creds = message.text
-    bot.send_message(message.chat.id, "পেমেন্ট নাম্বার (বিকাশ/নগদ) দিন:")
+    bot.send_message(message.chat.id, "PLEASE SEND YOUR PAYMENT NUMBER (BKASH/NAGAD):")
     bot.register_next_step_handler(message, finish_sell_order, cat, qty, creds)
 
 def finish_sell_order(message, cat, qty, creds):
-    bot.send_message(ADMIN_ID, f"💰 সেল রিকোয়েস্ট!\nপণ্য: {qty} {cat}\nতথ্য: {creds}\nপেমেন্ট: {message.text}")
-    bot.send_message(message.chat.id, "✅ রিকোয়েস্ট পাঠানো হয়েছে।")
+    bot.send_message(ADMIN_ID, f"💰 SELL REQUEST!\nITEM: {qty} x {cat}\nINFO: {creds}\nPAYMENT: {message.text}")
+    bot.send_message(message.chat.id, "✅ REQUEST SENT SUCCESSFULLY.")
 
 # --- Callback Handler ---
 @bot.callback_query_handler(func=lambda call: True)
@@ -125,23 +125,23 @@ def callback_handler(call):
         if is_subscribed(call.message.chat.id):
             bot.delete_message(call.message.chat.id, call.message.message_id)
             send_main_menu(call.message.chat.id)
-        else: bot.answer_callback_query(call.id, "❌ চ্যানেলে জয়েন করেননি!", show_alert=True)
+        else: bot.answer_callback_query(call.id, "❌ YOU HAVE NOT JOINED THE CHANNEL!", show_alert=True)
     elif call.data == 'admin_add':
-        bot.send_message(call.message.chat.id, "ফরম্যাট: Email Pass Category Price")
+        bot.send_message(call.message.chat.id, "FORMAT: Email Pass Category Price")
         bot.register_next_step_handler(call.message, save_email)
     elif call.data == 'admin_stock':
         cursor.execute("SELECT category, COUNT(*) FROM emails WHERE status='available' GROUP BY category")
         data = cursor.fetchall()
-        msg = "📊 বর্তমান স্টক:\n" + "\n".join([f"{r[0]}: {r[1]} টি" for r in data])
-        bot.send_message(call.message.chat.id, msg or "স্টক খালি!")
+        msg = "📊 CURRENT STOCK:\n" + "\n".join([f"{r[0]}: {r[1]} PIECES" for r in data])
+        bot.send_message(call.message.chat.id, msg or "STOCK IS EMPTY!")
 
 def save_email(message):
     try:
         email, password, cat, price = message.text.split()
         cursor.execute("INSERT INTO emails VALUES (NULL, ?, ?, ?, ?, 'available')", (email, password, cat, float(price)))
         conn.commit()
-        bot.reply_to(message, "✅ যুক্ত হয়েছে!")
-    except: bot.reply_to(message, "Error!")
+        bot.reply_to(message, "✅ ADDED SUCCESSFULLY!")
+    except: bot.reply_to(message, "FORMAT ERROR!")
 
 if __name__ == "__main__":
     bot.infinity_polling()
