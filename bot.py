@@ -58,6 +58,13 @@ def handle_text(message):
         markup.add(types.InlineKeyboardButton("Old Gmail (35 TK)", callback_data='buy_old'),
                    types.InlineKeyboardButton("New Gmail (32 TK)", callback_data='buy_new'))
         bot.send_message(message.chat.id, "📦 ক্যাটাগরি সিলেক্ট করুন:", reply_markup=markup)
+    
+    elif message.text == '💰 Sell Gmail':
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("Old Gmail", callback_data='sell_old'),
+                   types.InlineKeyboardButton("New Gmail", callback_data='sell_new'))
+        bot.send_message(message.chat.id, "💰 সেল করতে ক্যাটাগরি সিলেক্ট করুন:", reply_markup=markup)
+
     elif message.text == '⚙️ Admin Panel' and message.chat.id == ADMIN_ID:
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("➕ Add Gmail", callback_data='admin_add'),
@@ -65,6 +72,23 @@ def handle_text(message):
         bot.send_message(message.chat.id, "⚙️ অ্যাডমিন প্যানেল:", reply_markup=markup)
     elif message.text == '📢 Channel': bot.send_message(message.chat.id, f"📢 চ্যানেল: {CHANNEL_URL}")
     elif message.text == '📞 Contact': bot.send_message(message.chat.id, "📞 যোগাযোগ: @AK_A_SH_002")
+
+# --- Sell Flow ---
+def ask_gmail_credentials(message, cat, qty):
+    bot.send_message(message.chat.id, "এখন জিমেইল এবং পাসওয়ার্ডটি দিন (একসাথে):\nউদা: email@gmail.com pass123")
+    bot.register_next_step_handler(message, ask_payment_method, cat, qty)
+
+def ask_payment_method(message, cat, qty):
+    creds = message.text
+    bot.send_message(message.chat.id, "আপনার পেমেন্ট মেথড (বিকাশ/নগদ) এবং নাম্বারটি দিন:")
+    bot.register_next_step_handler(message, finish_sell_order, cat, qty, creds)
+
+def finish_sell_order(message, cat, qty, creds):
+    payment_info = message.text
+    admin_msg = (f"💰 নতুন সেল রিকোয়েস্ট!\nইউজার ID: {message.chat.id}\n"
+                 f"ক্যাটাগরি: {cat}\nপরিমাণ: {qty}\nজিমেইল ও পাস: {creds}\nপেমেন্ট ডিটেইলস: {payment_info}")
+    bot.send_message(ADMIN_ID, admin_msg)
+    bot.send_message(message.chat.id, "✅ আপনার সেল রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে।")
 
 # --- Payment Flow ---
 def ask_payment_info(message, cat, price):
@@ -99,7 +123,13 @@ def callback_handler(call):
         bot.answer_callback_query(call.id, "চ্যানেলে জয়েন করা বাধ্যতামূলক!")
         return
 
-    if call.data == 'admin_add':
+    # Sell Logic
+    if call.data in ['sell_old', 'sell_new']:
+        cat = 'Old' if 'old' in call.data else 'New'
+        bot.send_message(call.message.chat.id, f"কত পিস {cat} জিমেইল সেল করতে চান?")
+        bot.register_next_step_handler(call.message, ask_gmail_credentials, cat)
+    
+    elif call.data == 'admin_add':
         bot.send_message(call.message.chat.id, "পণ্য পাঠান: Email Password Category Price")
         bot.register_next_step_handler(call.message, save_email)
     elif call.data == 'admin_stock':
