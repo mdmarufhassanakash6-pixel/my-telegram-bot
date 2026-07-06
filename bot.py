@@ -31,7 +31,8 @@ def send_main_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row('🛒 জিমেইল কিনুন', '💰 জিমেইল বেচুন')
     markup.row('📢 চ্যানেল', '📞 যোগাযোগ')
-    if chat_id == ADMIN_ID: markup.row('⚙️ অ্যাডমিন প্যানেল')
+    if chat_id == ADMIN_ID:
+        markup.row('⚙️ অ্যাডমিন প্যানেল')
     bot.send_message(chat_id, "👋 স্বাগতম! আপনার অপশনটি বেছে নিন:", reply_markup=markup)
 
 # --- স্টার্ট হ্যান্ডলার ---
@@ -43,15 +44,18 @@ def start(message):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("📢 চ্যানেলে জয়েন করুন", url=CHANNEL_URL))
         markup.add(types.InlineKeyboardButton("👥 ফেসবুক গ্রুপে জয়েন করুন", url=FB_GROUP_URL))
-        markup.add(types.InlineKeyboardButton("🔑 ভেরিফাই করুন", callback_data='verify_sub'))
-        bot.send_message(message.chat.id, "⚠️ বট ব্যবহারের জন্য আমাদের চ্যানেল এবং ফেসবুক গ্রুপে জয়েন করুন, তারপর ভেরিফাই বাটনে ক্লিক করুন!", reply_markup=markup)
+        markup.add(types.InlineKeyboardButton("🔑 ভেরিফাই", callback_data='verify_sub'))
+        bot.send_message(message.chat.id, "⚠️ বট ব্যবহারের জন্য চ্যানেল ও গ্রুপে জয়েন করুন!", reply_markup=markup)
         return
     send_main_menu(message.chat.id)
 
 # --- মূল হ্যান্ডলার ---
 @bot.message_handler(func=lambda message: True)
 def handle_text(message):
-    if not is_subscribed(message.chat.id): return
+    # চ্যানেল ভেরিফিকেশন চেক
+    if not is_subscribed(message.chat.id):
+        return
+
     text = message.text.strip()
 
     if text == '🛒 জিমেইল কিনুন':
@@ -75,9 +79,21 @@ def handle_text(message):
     elif text in ['পুরানো জিমেইল বেচুন', 'নতুন জিমেইল বেচুন']:
         cat = 'Old' if 'পুরানো' in text else 'New'
         bot.send_message(message.chat.id, f"কয়টি {cat} জিমেইল বেচতে চান?")
-        bot.register_next_step_handler(message, lambda m: ask_gmail_credentials(m, cat))
+        bot.register_next_step_handler(message, ask_gmail_credentials, cat)
 
-    elif text == '🏠 মেইন মেনু': send_main_menu(message.chat.id)
+    elif text == '📢 চ্যানেল':
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("📢 আমাদের চ্যানেলে জয়েন করুন", url=CHANNEL_URL))
+        bot.send_message(message.chat.id, "নিচের বাটনে ক্লিক করে আমাদের চ্যানেলে যুক্ত হোন:", reply_markup=markup)
+        
+    elif text == '📞 যোগাযোগ':
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("📩 আমার সাথে যোগাযোগ করুন", url="https://t.me/AK_A_SH_002"))
+        bot.send_message(message.chat.id, "যেকোনো প্রয়োজনে সরাসরি যোগাযোগ করুন:", reply_markup=markup)
+
+    elif text == '🏠 মেইন মেনু':
+        send_main_menu(message.chat.id)
+
     elif text == '⚙️ অ্যাডমিন প্যানেল' and message.chat.id == ADMIN_ID:
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("➕ জিমেইল যোগ", callback_data='admin_add'),
@@ -86,7 +102,7 @@ def handle_text(message):
                    types.InlineKeyboardButton("👥 ইউজার সংখ্যা", callback_data='admin_users'))
         bot.send_message(message.chat.id, "⚙️ অ্যাডমিন প্যানেল:", reply_markup=markup)
 
-# --- লজিক ফাংশন ---
+# --- পেমেন্ট ও অন্যান্য ফাংশন ---
 def ask_payment_info(message, cat, price):
     try:
         qty = int(message.text)
@@ -103,7 +119,7 @@ def finalize_buy_order(message, cat, qty, total):
 
 def ask_gmail_credentials(message, cat):
     qty = message.text
-    bot.send_message(message.chat.id, "জিমেইল এবং পাসওয়ার্ড পাঠান (যেমন: abc@gmail.com pass123):")
+    bot.send_message(message.chat.id, "জিমেইল এবং পাসওয়ার্ড পাঠান:")
     bot.register_next_step_handler(message, lambda m: ask_payment_method(m, cat, qty, m.text))
 
 def ask_payment_method(message, cat, qty, creds):
@@ -123,7 +139,7 @@ def callback_handler(call):
         if is_subscribed(call.message.chat.id):
             bot.delete_message(call.message.chat.id, call.message.message_id)
             send_main_menu(call.message.chat.id)
-        else: bot.answer_callback_query(call.id, "❌ জয়েন করেননি!", show_alert=True)
+        else: bot.answer_callback_query(call.id, "❌ চ্যানেল জয়েন করেননি!", show_alert=True)
     
     elif call.data.startswith('approve_'):
         _, user_id, qty, cat, total = call.data.split('_')
