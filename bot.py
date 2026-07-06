@@ -3,9 +3,9 @@ import telebot
 from telebot import types
 import sqlite3
 
+# কনফিগারেশন
 TOKEN = os.getenv('TOKEN')
 ADMIN_ID = int(os.getenv('ADMIN_ID', 0))
-
 CHANNEL_ID = '@gmailbuyer1122'
 CHANNEL_URL = "https://t.me/gmailbuyer1122"
 FB_GROUP_URL = "https://www.facebook.com/share/g/1FChgcyZrp/"
@@ -19,6 +19,7 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS emails (id INTEGER PRIMARY KEY, ema
 cursor.execute('''CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)''')
 conn.commit()
 
+# --- হেল্পার ফাংশন ---
 def is_subscribed(user_id):
     try:
         status = bot.get_chat_member(CHANNEL_ID, user_id).status
@@ -38,6 +39,7 @@ def send_main_menu(chat_id):
     if chat_id == ADMIN_ID: markup.row('⚙️ অ্যাডমিন প্যানেল')
     bot.send_message(chat_id, "👋 স্বাগতম! আপনার অপশনটি বেছে নিন:", reply_markup=markup)
 
+# --- হ্যান্ডলারসমূহ ---
 @bot.message_handler(commands=['start'])
 def start(message):
     cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (message.chat.id,))
@@ -56,6 +58,7 @@ def handle_text(message):
     if not is_subscribed(message.chat.id): return
     text = message.text.strip()
 
+    # কেনা বা বেচার অপশন
     if text == '🛒 জিমেইল কিনুন':
         stock_info = get_stock_text()
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -74,7 +77,6 @@ def handle_text(message):
             bot.register_next_step_handler(message, ask_payment_info, cat, price)
 
     elif text == '💰 জিমেইল বেচুন':
-        # চ্যানেল প্রমোশন মেসেজ
         bot.send_message(message.chat.id, "📢 আপনারা একটু কষ্ট করে আমাদের চ্যানেল ঘুরে দেখতে পারেন: https://t.me/gmailbuyer1122 ✨")
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.row('পুরানো জিমেইল (২৫ টাকা)', 'নতুন জিমেইল (২২ টাকা)')
@@ -104,22 +106,23 @@ def handle_text(message):
                    types.InlineKeyboardButton("👥 ইউজার সংখ্যা", callback_data='admin_users'))
         bot.send_message(message.chat.id, "⚙️ অ্যাডমিন প্যানেল:", reply_markup=markup)
 
+# --- ফাংশনসমূহ ---
 def ask_payment_info(message, cat, price):
     try:
         qty = int(message.text)
         total = qty * price
-        bot.send_message(message.chat.id, f"মোট: {total} টাকা।\nবিকাশ: 01762921053\n⚠️ পেমেন্ট করার পর আপনার বিকাশ নাম্বার ও TrxID লিখে পাঠান, নাহলে এপ্রুভ হবে না।")
+        bot.send_message(message.chat.id, f"মোট: {total} টাকা।\nবিকাশ: 01762921053\n⚠️ পেমেন্ট করার পর আপনার বিকাশ নাম্বার ও TrxID লিখে পাঠান।")
         bot.register_next_step_handler(message, lambda m: finalize_buy_order(m, cat, qty, total))
     except: bot.send_message(message.chat.id, "❌ শুধু সংখ্যা লিখুন!")
 
 def finalize_buy_order(message, cat, qty, total):
     if len(message.text) < 5:
-        bot.send_message(message.chat.id, "❌ ভুল তথ্য! অনুগ্রহ করে সঠিক TrxID ও বিকাশ নাম্বার দিন।")
+        bot.send_message(message.chat.id, "❌ ভুল তথ্য! সঠিক TrxID ও বিকাশ নাম্বার দিন।")
         return
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("✅ এপ্রুভ করুন", callback_data=f"approve_{message.chat.id}_{qty}_{cat}_{total}"))
-    bot.send_message(ADMIN_ID, f"🔔 নতুন পেমেন্ট রিকোয়েস্ট!\nইউজার: {message.chat.id}\nপণ্য: {qty} টি {cat}\nডিটেইলস: {message.text}", reply_markup=markup)
-    bot.send_message(message.chat.id, "✅ আপনার পেমেন্ট রিকোয়েস্টটি যাচাইয়ের জন্য পাঠানো হয়েছে।")
+    bot.send_message(ADMIN_ID, f"🔔 পেমেন্ট রিকোয়েস্ট!\nইউজার: {message.chat.id}\nপণ্য: {qty} টি {cat}\nডিটেইলস: {message.text}", reply_markup=markup)
+    bot.send_message(message.chat.id, "✅ আপনার রিকোয়েস্টটি পাঠানো হয়েছে।")
 
 def ask_gmail_credentials(message, cat):
     qty = message.text
