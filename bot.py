@@ -26,7 +26,8 @@ def is_subscribed(user_id):
     try:
         status = bot.get_chat_member(CHANNEL_ID, user_id).status
         return status in ['member', 'administrator', 'creator']
-    except: return False
+    except:
+        return False
 
 def send_main_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -87,12 +88,12 @@ def handle_text(message):
                    types.InlineKeyboardButton("👥 ইউজার সংখ্যা", callback_data='admin_users'))
         bot.send_message(message.chat.id, "⚙️ অ্যাডমিন প্যানেল:", reply_markup=markup)
 
-# --- পেমেন্ট লজিক (কিনুন) ---
+# --- পেমেন্ট লজিক ---
 def ask_payment_info(message, cat, price):
     try:
         qty = int(message.text)
         total = qty * price
-        bot.send_message(message.chat.id, f"অর্ডার: {qty} টি {cat}। মোট: {total} টাকা।\nবিকাশ: 01762921053\nTrxID ও আপনার নাম্বার দিন।")
+        bot.send_message(message.chat.id, f"অর্ডার: {qty} টি {cat}। মোট: {total} টাকা।\nবিকাশ: 01762921053\nTrxID ও নাম্বার দিন।")
         bot.register_next_step_handler(message, finalize_order, cat, qty, total)
     except: bot.send_message(message.chat.id, "❌ শুধু সংখ্যা লিখুন!")
 
@@ -102,22 +103,19 @@ def finalize_order(message, cat, qty, total):
     bot.send_message(ADMIN_ID, f"🔔 পেমেন্ট রিকোয়েস্ট!\nইউজার: {message.chat.id}\nপণ্য: {qty} টি {cat}\nমোট: {total} টাকা\nডিটেইলস: {message.text}", reply_markup=markup)
     bot.send_message(message.chat.id, "✅ রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে।")
 
-# --- সেল লজিক (বেচুন) ---
 def ask_gmail_credentials(message, cat):
-    qty = message.text
     bot.send_message(message.chat.id, "জিমেইল এবং পাসওয়ার্ড দিন:")
-    bot.register_next_step_handler(message, ask_payment_method, cat, qty)
+    bot.register_next_step_handler(message, lambda m: ask_payment_method(m, cat, m.text))
 
-def ask_payment_method(message, cat, qty):
-    creds = message.text
-    bot.send_message(message.chat.id, "আপনার পেমেন্ট নাম্বার (বিকাশ/নগদ) দিন:")
-    bot.register_next_step_handler(message, finish_sell_order, cat, qty, creds)
+def ask_payment_method(message, cat, qty, creds):
+    bot.send_message(message.chat.id, "আপনার পেমেন্ট নাম্বার দিন:")
+    bot.register_next_step_handler(message, lambda m: finish_sell_order(m, cat, qty, creds, m.text))
 
-def finish_sell_order(message, cat, qty, creds):
+def finish_sell_order(message, cat, qty, creds, p_num):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("✅ পেমেন্ট করেছি (এপ্রুভ)", callback_data=f"sell_approve_{message.chat.id}"))
-    bot.send_message(ADMIN_ID, f"💰 সেল রিকোয়েস্ট!\nইউজার: {message.chat.id}\nপণ্য: {qty} {cat}\nতথ্য: {creds}\nপেমেন্ট: {message.text}", reply_markup=markup)
-    bot.send_message(message.chat.id, "✅ রিকোয়েস্ট পাঠানো হয়েছে। পেমেন্ট পাওয়ার পর অ্যাডমিন কনফার্ম করবেন।")
+    bot.send_message(ADMIN_ID, f"💰 সেল রিকোয়েস্ট!\nইউজার: {message.chat.id}\nপণ্য: {qty} {cat}\nতথ্য: {creds}\nপেমেন্ট: {p_num}", reply_markup=markup)
+    bot.send_message(message.chat.id, "✅ রিকোয়েস্ট পাঠানো হয়েছে।")
 
 # --- কলব্যাক হ্যান্ডলার ---
 @bot.callback_query_handler(func=lambda call: True)
@@ -138,23 +136,29 @@ def callback_handler(call):
             for r in rows: cursor.execute("UPDATE emails SET status='sold' WHERE id=?", (r[0],))
             conn.commit()
             bot.send_message(user_id, delivery)
-            bot.send_message(CHANNEL_ID, f"🎉 সেল সফল!\n👤 ইউজার আইডি: {user_id}\n📦 {qty} টি {cat}\n💰 {total} টাকা")
+            bot.send_message(CHANNEL_ID, f"🎉 সেল সফল!\n📦 {qty} টি {cat}\n💰 {total} টাকা")
             bot.edit_message_text("✅ ডেলিভারি সম্পন্ন!", ADMIN_ID, call.message.message_id)
 
     elif call.data.startswith('sell_approve_'):
         user_id = call.data.split('_')[2]
-        bot.send_message(user_id, "🎉 অভিনন্দন! আপনার সেল রিকোয়েস্টটি এপ্রুভ হয়েছে এবং পেমেন্ট পাঠিয়ে দেওয়া হয়েছে। 😊")
+        bot.send_message(user_id, "🎉 অভিনন্দন! আপনার সেল রিকোয়েস্টটি এপ্রুভ হয়েছে এবং পেমেন্ট দেওয়া হয়েছে।")
         bot.edit_message_text("✅ পেমেন্ট সম্পন্ন করা হয়েছে!", ADMIN_ID, call.message.message_id)
-    
+
+    elif call.data == 'admin_stock':
+        cursor.execute("SELECT category, COUNT(*) FROM emails WHERE status='available' GROUP BY category")
+        rows = cursor.fetchall()
+        msg = "📊 বর্তমান স্টক:\n"
+        if not rows: msg += "স্টক খালি!"
+        else: 
+            for row in rows: msg += f"{row[0]}: {row[1]} টি\n"
+        bot.send_message(call.message.chat.id, msg)
+        
     elif call.data == 'admin_add':
         bot.send_message(call.message.chat.id, "ফরম্যাট: Email Pass Category Price")
         bot.register_next_step_handler(call.message, lambda m: [cursor.execute("INSERT INTO emails VALUES (NULL, ?, ?, ?, ?, 'available')", m.text.split()), conn.commit(), bot.reply_to(m, "✅ যুক্ত হয়েছে!")])
     elif call.data == 'admin_remove':
         bot.send_message(call.message.chat.id, "রিমুভ করতে জিমেইলটি লিখুন:")
         bot.register_next_step_handler(call.message, lambda m: [cursor.execute("DELETE FROM emails WHERE email=?", (m.text.strip(),)), conn.commit(), bot.reply_to(m, "✅ রিমুভড!")])
-    elif call.data == 'admin_stock':
-        cursor.execute("SELECT category, COUNT(*) FROM emails WHERE status='available' GROUP BY category")
-        bot.send_message(call.message.chat.id, "📊 স্টক:\n" + "\n".join([f"{r[0]}: {r[1]} টি" for r in call.message.chat.id]))
     elif call.data == 'admin_users':
         cursor.execute("SELECT COUNT(*) FROM users")
         bot.send_message(call.message.chat.id, f"👥 মোট ইউজার: {cursor.fetchone()[0]}")
