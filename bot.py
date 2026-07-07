@@ -5,7 +5,7 @@ import sqlite3
 
 # কনফিগারেশন
 TOKEN = os.getenv('TOKEN')
-ADMIN_ID = int(os.getenv('ADMIN_ID', 0))
+ADMIN_ID = 8357226129
 CHANNEL_ID = '@gmailbuyer1122'
 CHANNEL_URL = "https://t.me/gmailbuyer1122"
 FB_GROUP_URL = "https://www.facebook.com/share/g/1FChgcyZrp/"
