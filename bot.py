@@ -3,7 +3,7 @@ import telebot
 from telebot import types
 import sqlite3
 
-TOKEN = 'YOUR_BOT_TOKEN_HERE'
+TOKEN = os.getenv('TOKEN')
 ADMIN_ID = 8357226129 
 CHANNEL_ID = '@gmailbuyer1122'
 CHANNEL_URL = "https://t.me/gmailbuyer1122"
